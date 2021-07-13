@@ -63,7 +63,7 @@ static thread manager_thread;
 static bool manager_initialized = false;
 os_event_t *cef_started_event = nullptr;
 
-#if defined(_WIN32) || defined(__APPLE__)
+#if defined(_WIN32)
 static int adapterCount = 0;
 #endif
 static std::wstring deviceId;
@@ -298,7 +298,11 @@ static void BrowserInit(void)
 	prod_ver << std::to_string(obs_maj) << "." << std::to_string(obs_min)
 		 << "." << std::to_string(obs_pat);
 
+#if CHROME_VERSION_BUILD >= 4472
+	CefString(&settings.user_agent_product) = prod_ver.str();
+#else
 	CefString(&settings.product_version) = prod_ver.str();
+#endif
 
 #ifdef USE_QT_LOOP
 	settings.external_message_pump = true;
@@ -411,7 +415,7 @@ void RegisterBrowserSource()
 			    OBS_SOURCE_AUDIO |
 #endif
 			    OBS_SOURCE_CUSTOM_DRAW | OBS_SOURCE_INTERACTION |
-			    OBS_SOURCE_DO_NOT_DUPLICATE;
+			    OBS_SOURCE_DO_NOT_DUPLICATE | OBS_SOURCE_SRGB;
 	info.get_properties = browser_source_get_properties;
 	info.get_defaults = browser_source_get_defaults;
 	info.icon_type = OBS_ICON_TYPE_BROWSER;
