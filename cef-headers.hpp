@@ -1,6 +1,6 @@
 /******************************************************************************
  Copyright (C) 2014 by John R. Bradley <jrb@turrettech.com>
- Copyright (C) 2018 by Hugh Bailey ("Jim") <jim@obsproject.com>
+ Copyright (C) 2023 by Lain Bailey <lain@obsproject.com>
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -34,6 +34,9 @@
 #include <include/cef_parser.h>
 #include <include/cef_scheme.h>
 #include <include/cef_version.h>
+#if CHROME_VERSION_BUILD >= 6943
+#include <include/cef_version_info.h>
+#endif
 #include <include/cef_render_process_handler.h>
 #include <include/cef_request_context_handler.h>
 #include <include/cef_jsdialog_handler.h>
@@ -41,10 +44,9 @@
 #include "include/wrapper/cef_library_loader.h"
 #endif
 
-#if CHROME_VERSION_BUILD >= 4430
-#define ENABLE_WASHIDDEN 1
-#else
-#define ENABLE_WASHIDDEN 0
+#if !defined(_WIN32) && !defined(__APPLE__) && \
+	(CHROME_VERSION_BUILD >= 6943 || (CHROME_VERSION_BUILD > 6337 && defined(CEF_OSR_EXTRA_INFO)))
+#define ENABLE_BROWSER_SHARED_TEXTURE
 #endif
 
 #define SendBrowserProcessMessage(browser, pid, msg)             \

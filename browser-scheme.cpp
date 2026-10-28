@@ -1,6 +1,6 @@
 /******************************************************************************
  Copyright (C) 2014 by John R. Bradley <jrb@turrettech.com>
- Copyright (C) 2018 by Hugh Bailey ("Jim") <jim@obsproject.com>
+ Copyright (C) 2023 by Lain Bailey <lain@obsproject.com>
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -17,17 +17,26 @@
  ******************************************************************************/
 
 #include "browser-scheme.hpp"
+#include "ip-string.hpp"
 #include "wide-string.hpp"
 #include <include/wrapper/cef_stream_resource_handler.h>
 
-#if !ENABLE_LOCAL_FILE_URL_SCHEME
-CefRefPtr<CefResourceHandler>
-BrowserSchemeHandlerFactory::Create(CefRefPtr<CefBrowser> browser,
-				    CefRefPtr<CefFrame>, const CefString &,
-				    CefRefPtr<CefRequest> request)
+CefRefPtr<CefResourceHandler> BrowserSchemeHandlerFactory::Create(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame>,
+								  const CefString &, CefRefPtr<CefRequest> request)
 {
-	if (!browser || !request)
+	if (!browser || !request) {
 		return nullptr;
+	}
+
+	CefString frameURL = browser->GetMainFrame()->GetURL();
+	if (!frameURL.empty()) {
+		CefURLParts frameParts;
+		CefParseURL(frameURL, frameParts);
+		std::string frameOrigin = CefString(&frameParts.origin);
+		if (frameOrigin != "http://absolute/") {
+			return nullptr;
+		}
+	}
 
 	CefURLParts parts;
 	CefParseURL(request->GetURL(), parts);
@@ -35,33 +44,41 @@ BrowserSchemeHandlerFactory::Create(CefRefPtr<CefBrowser> browser,
 	std::string path = CefString(&parts.path);
 
 	path = CefURIDecode(path, true, cef_uri_unescape_rule_t::UU_SPACES);
-	path = CefURIDecode(
-		path, true,
-		cef_uri_unescape_rule_t::
-			UU_URL_SPECIAL_CHARS_EXCEPT_PATH_SEPARATORS);
+	path = CefURIDecode(path, true, cef_uri_unescape_rule_t::UU_URL_SPECIAL_CHARS_EXCEPT_PATH_SEPARATORS);
 
 	std::string fileExtension = path.substr(path.find_last_of(".") + 1);
 
-	for (char &ch : fileExtension)
+	for (char &ch : fileExtension) {
 		ch = (char)tolower(ch);
-	if (fileExtension.compare("woff2") == 0)
+	}
+	if (fileExtension.compare("woff2") == 0) {
 		fileExtension = "woff";
+	}
 
-#ifdef _WIN32
-	CefRefPtr<CefStreamReader> stream =
-		CefStreamReader::CreateForFile(path.substr(1));
-#else
-	CefRefPtr<CefStreamReader> stream =
-		CefStreamReader::CreateForFile(path);
-#endif
+	std::string filePath = path.substr(1);
 
-	if (stream) {
-		CefString mimeType = CefGetMimeType(fileExtension);
-		if (mimeType.empty())
-			mimeType = "application/octet-stream";
-		return new CefStreamResourceHandler(mimeType, stream);
-	} else {
+	std::string checkString = path.substr(path.find_first_not_of("/"));
+	checkString = checkString.substr(0, checkString.find_first_of("/"));
+
+	// An IP address should never be a valid path for CreateForFile normally, but in some cases an OS
+	// can resolve one as such. As an extra safeguard, we prevent any IP addresses in the path.
+	if (checkForIpv4String(checkString)) {
 		return nullptr;
 	}
+
+	if (checkForIpv6String(checkString)) {
+		return nullptr;
+	}
+
+	CefRefPtr<CefStreamReader> stream = CefStreamReader::CreateForFile(filePath);
+	if (!stream) {
+		return nullptr;
+	}
+
+	CefString mimeType = CefGetMimeType(fileExtension);
+	if (mimeType.empty()) {
+		mimeType = "application/octet-stream";
+	}
+
+	return new CefStreamResourceHandler(mimeType, stream);
 }
-#endif

@@ -1,6 +1,6 @@
 /******************************************************************************
  Copyright (C) 2014 by John R. Bradley <jrb@turrettech.com>
- Copyright (C) 2018 by Hugh Bailey ("Jim") <jim@obsproject.com>
+ Copyright (C) 2023 by Lain Bailey <lain@obsproject.com>
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
@@ -22,19 +22,10 @@
 #include <string>
 #include <fstream>
 
-#if CHROME_VERSION_BUILD < 4638
-#define ENABLE_LOCAL_FILE_URL_SCHEME 1
-#else
-#define ENABLE_LOCAL_FILE_URL_SCHEME 0
-#endif
-
-#if !ENABLE_LOCAL_FILE_URL_SCHEME
 class BrowserSchemeHandlerFactory : public CefSchemeHandlerFactory {
 public:
-	virtual CefRefPtr<CefResourceHandler>
-	Create(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame>,
-	       const CefString &, CefRefPtr<CefRequest> request) override;
+	virtual CefRefPtr<CefResourceHandler> Create(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame>,
+						     const CefString &, CefRefPtr<CefRequest> request) override;
 
 	IMPLEMENT_REFCOUNTING(BrowserSchemeHandlerFactory);
 };
-#endif
